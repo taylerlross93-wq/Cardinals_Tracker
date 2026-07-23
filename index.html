@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Cardinals Basketball Tracker</title>
+<style>
+/* ── RESET & VARIABLES ── */
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --red:#C8102E;--blue:#1565C0;--green:#2E7D32;--amber:#F57F17;
+  --surface:#fff;--surface-1:#F5F5F5;--surface-2:#EEEEEE;
+  --text:#1A1A1A;--text-2:#555;--text-3:#999;
+  --border:#E0E0E0;--border-2:#BDBDBD;
+  --radius:8px;--shadow:0 1px 3px rgba(0,0,0,0.08);
+}
+@media(prefers-color-scheme:dark){
+  :root{
+    --surface:#1C1C1E;--surface-1:#2C2C2E;--surface-2:#3A3A3C;
+    --text:#F2F2F7;--text-2:#AEAEB2;--text-3:#636366;
+    --border:#3A3A3C;--border-2:#48484A;
+  }
+}
+html,body{height:100%;background:#111;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--text);overflow:hidden}
+.app{display:flex;flex-direction:column;height:100vh}
+
+/* ── TOP BAR ── */
+.topbar{background:#111;padding:8px 12px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;border-bottom:1px solid #333}
+.topbar-title{color:#fff;font-size:14px;font-weight:600}
+.topbar-sub{color:#888;font-size:11px;margin-top:1px}
+.period-row{display:flex;gap:4px;align-items:center}
+.period-btn{padding:5px 8px;border-radius:6px;border:1px solid #444;background:none;font-size:11px;font-weight:600;cursor:pointer;color:#aaa;transition:all .15s}
+.period-btn.active{background:var(--red);color:#fff;border-color:var(--red)}
+
+/* ── SCOREBOARD ── */
+.scoreboard{background:#1a1a1a;padding:8px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;border-bottom:1px solid #333}
+.score-block{text-align:center;min-width:90px}
+.score-team{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px}
+.score-team.red{color:var(--red)}
+.score-team.blue{color:#5B9BD5}
+.score-num{font-size:32px;font-weight:700;line-height:1}
+.score-num.red{color:#fff}
+.score-num.blue{color:#fff}
+.score-mid{text-align:center}
+.period-badge{background:#333;color:#ccc;font-size:11px;padding:3px 10px;border-radius:20px;margin-bottom:3px;display:inline-block}
+
+/* ── MAIN SPLIT LAYOUT ── */
+.split{display:flex;flex:1;overflow:hidden;gap:0}
+.side{flex:1;display:flex;flex-direction:column;overflow:hidden;border-right:1px solid #333}
+.side:last-child{border-right:none}
+.side-header{padding:6px 8px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);flex-shrink:0}
+.side-header.red{background:#1a0508}
+.side-header.blue{background:#051020}
+.side-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em}
+.side-label.red{color:var(--red)}
+.side-label.blue{color:#5B9BD5}
+.side-content{flex:1;overflow-y:auto;background:var(--surface)}
+
+/* ── TABS (per side) ── */
+.side-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--surface-1)}
+.side-tab{flex:1;padding:7px 2px;font-size:11px;font-weight:500;text-align:center;cursor:pointer;border:none;background:none;color:var(--text-3);border-bottom:2px solid transparent}
+.side-tab.active.red{color:var(--red);border-bottom-color:var(--red)}
+.side-tab.active.blue{color:#1565C0;border-bottom-color:#1565C0}
+
+/* ── PANELS ── */
+.side-panel{display:none;padding:8px}
+.side-panel.active{display:block}
+
+/* ── SELECTED PLAYER BAR ── */
+.sel-bar{border-radius:var(--radius);padding:7px 10px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;border:1px solid var(--border)}
+.sel-bar.red{background:#fff5f5;border-color:#ffcdd2}
+.sel-bar.blue{background:#e3f2fd;border-color:#90caf9}
+@media(prefers-color-scheme:dark){
+  .sel-bar.red{background:#2a0a0a;border-color:#6a1020}
+  .sel-bar.blue{background:#0a1929;border-color:#1a3a5c}
+}
+.sel-name{font-size:12px;font-weight:600;color:var(--text)}
+.sel-hint{font-size:10px;color:var(--text-3)}
+.sel-pts{font-size:18px;font-weight:700}
+.sel-pts.red{color:var(--red)}
+.sel-pts.blue{color:#1565C0}
+
+/* ── PLAYER LIST ── */
+.player-list{display:flex;flex-direction:column;gap:5px;margin-bottom:8px}
+.player-card{background:var(--surface-1);border:1px solid var(--border);border-radius:var(--radius);padding:7px 9px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:all .12s}
+.player-card:active{transform:scale(.97)}
+.player-card.sel-red{border:2px solid var(--red);background:#fff5f5}
+.player-card.sel-blue{border:2px solid #1565C0;background:#e3f2fd}
+@media(prefers-color-scheme:dark){
+  .player-card.sel-red{background:#2a0a0a}
+  .player-card.sel-blue{background:#0a1929}
+}
+.pc-left{}
+.pc-num{font-size:10px;color:var(--text-3);font-weight:500}
+.pc-name{font-size:12px;font-weight:600;color:var(--text)}
+.pc-stats{font-size:10px;color:var(--text-2);margin-top:2px}
+.pc-pts{font-size:18px;font-weight:700}
+.pc-pts.red{color:var(--red)}
+.pc-pts.blue{color:#1565C0}
+.empty-msg{color:var(--text-3);font-size:12px;text-align:center;padding:16px 8px}
+
+/* ── STAT BUTTONS ── */
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:8px}
+.stat-btn{padding:10px 4px;border-radius:var(--radius);border:1px solid var(--border-2);background:var(--surface-1);font-size:12px;font-weight:600;cursor:pointer;color:var(--text);text-align:center;transition:all .1s}
+.stat-btn:active{transform:scale(.95)}
+.stat-btn.make{background:#E8F5E9;border-color:#A5D6A7;color:#1B5E20}
+.stat-btn.miss{background:#FFEBEE;border-color:#FFCDD2;color:#B71C1C}
+.stat-btn.neutral{background:#E3F2FD;border-color:#90CAF9;color:#0D47A1}
+.stat-btn.warn{background:#FFF8E1;border-color:#FFE082;color:#E65100}
+@media(prefers-color-scheme:dark){
+  .stat-btn.make{background:#1B3A1F;border-color:#2E7D32;color:#A5D6A7}
+  .stat-btn.miss{background:#3E1212;border-color:#C62828;color:#FFCDD2}
+  .stat-btn.neutral{background:#0D2744;border-color:#1565C0;color:#90CAF9}
+  .stat-btn.warn{background:#3E2800;border-color:#F57F17;color:#FFE082}
+}
+
+/* ── QUICK SCORE (opponent untracked) ── */
+.quick-row{display:flex;gap:5px;margin-bottom:8px}
+.quick-btn{flex:1;padding:9px 4px;border-radius:var(--radius);background:#E3F2FD;border:1px solid #90CAF9;color:#0D47A1;font-size:12px;font-weight:600;cursor:pointer}
+.quick-btn:active{transform:scale(.97)}
+@media(prefers-color-scheme:dark){
+  .quick-btn{background:#0D2744;border-color:#1565C0;color:#90CAF9}
+}
+
+/* ── LOG ── */
+.log-list{display:flex;flex-direction:column;gap:5px}
+.log-item{background:var(--surface-1);border-left:3px solid var(--border-2);border-radius:var(--radius);padding:7px 9px}
+.log-item.red{border-left-color:var(--red)}
+.log-item.blue{border-left-color:#1565C0}
+.log-player{font-size:11px;font-weight:600;color:var(--text)}
+.log-action{font-size:10px;color:var(--text-2)}
+.log-time{font-size:10px;color:var(--text-3);margin-top:2px}
+
+/* ── BOX SCORE ── */
+.box-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:10px;min-width:280px}
+th{padding:5px 3px;font-weight:600;color:var(--text-2);border-bottom:1px solid var(--border);font-size:9px;text-align:center;background:var(--surface-1)}
+th:first-child{text-align:left;padding-left:6px}
+td{padding:5px 3px;color:var(--text);border-bottom:1px solid var(--border);text-align:center}
+td:first-child{text-align:left;font-weight:600;font-size:11px;padding-left:6px}
+.totals-row td{font-weight:700;background:var(--surface-1);border-top:2px solid var(--border-2)}
+
+/* ── SETUP ── */
+.setup-section{margin-bottom:12px}
+.setup-label{font-size:10px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px}
+.setup-input{width:100%;padding:8px 10px;border:1px solid var(--border-2);border-radius:var(--radius);font-size:13px;background:var(--surface);color:var(--text);margin-bottom:6px}
+.setup-input:focus{outline:2px solid var(--red);border-color:transparent}
+.add-row{display:flex;gap:5px;margin-bottom:6px}
+.add-row input{font-size:12px;padding:8px 9px;border:1px solid var(--border-2);border-radius:var(--radius);background:var(--surface);color:var(--text)}
+.add-row input:focus{outline:2px solid var(--red)}
+.add-num{width:50px}
+.add-name{flex:1}
+.add-btn{padding:8px 12px;color:#fff;border:none;border-radius:var(--radius);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
+.add-btn.red{background:var(--red)}
+.add-btn.blue{background:#1565C0}
+.roster-item{display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:var(--surface-1);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:4px}
+.roster-item-name{font-size:11px;color:var(--text);font-weight:500}
+.roster-remove{font-size:10px;color:#C62828;background:none;border:none;cursor:pointer}
+.btn-export{width:100%;padding:10px;border:none;border-radius:var(--radius);font-size:12px;font-weight:600;cursor:pointer;margin-bottom:5px;color:#fff}
+.btn-export.red{background:var(--red)}
+.btn-export.blue{background:#1565C0}
+.btn-clear{width:100%;padding:9px;border:1px solid #FFCDD2;border-radius:var(--radius);font-size:12px;cursor:pointer;background:none;color:#C62828;margin-top:4px}
+
+/* ── UNDO BAR ── */
+.undo-bar{padding:6px 8px;border-top:1px solid var(--border);flex-shrink:0;background:var(--surface-1)}
+.undo-btn{width:100%;padding:7px;border:1px solid var(--border-2);border-radius:var(--radius);background:var(--surface);font-size:11px;color:var(--text-2);cursor:pointer}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(8px);background:#111;color:#fff;padding:8px 16px;border-radius:20px;font-size:12px;font-weight:500;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;z-index:9999;white-space:nowrap;border:1px solid #333}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── SEC LABEL ── */
+.sec-label{font-size:10px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.07em;margin:8px 0 5px}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div>
+      <div class="topbar-title" id="game-label">Cardinals Basketball</div>
+      <div class="topbar-sub">Tap player → tap stat</div>
+    </div>
+    <div class="period-row">
+      <button class="period-btn active" onclick="setPeriod(1,this)">Q1</button>
+      <button class="period-btn" onclick="setPeriod(2,this)">Q2</button>
+      <button class="period-btn" onclick="setPeriod(3,this)">Q3</button>
+      <button class="period-btn" onclick="setPeriod(4,this)">Q4</button>
+      <button class="period-btn" onclick="setPeriod(5,this)">OT</button>
+    </div>
+  </div>
+
+  <!-- SCOREBOARD -->
+  <div class="scoreboard">
+    <div class="score-block">
+      <div class="score-team red">Cardinals</div>
+      <div class="score-num red" id="our-score">0</div>
+    </div>
+    <div class="score-mid">
+      <div class="period-badge" id="period-badge">Q1</div>
+      <div style="color:#444;font-size:12px">vs</div>
+    </div>
+    <div class="score-block">
+      <div class="score-team blue" id="opp-name-display">Opponent</div>
+      <div class="score-num blue" id="opp-score">0</div>
+    </div>
+  </div>
+
+  <!-- SPLIT LAYOUT -->
+  <div class="split">
+
+    <!-- LEFT SIDE — CARDINALS -->
+    <div class="side">
+      <div class="side-header red">
+        <div class="side-label red">Cardinals</div>
+        <div style="font-size:10px;color:#666">Q<span id="card-period">1</span></div>
+      </div>
+      <div class="side-tabs">
+        <button class="side-tab active red" onclick="switchSide('cardinals','track',this)">Track</button>
+        <button class="side-tab red" onclick="switchSide('cardinals','log',this)">Log</button>
+        <button class="side-tab red" onclick="switchSide('cardinals','box',this)">Box</button>
+        <button class="side-tab red" onclick="switchSide('cardinals','setup',this)">Setup</button>
+      </div>
+      <div class="side-content">
+
+        <!-- CARDINALS TRACK -->
+        <div id="cardinals-track" class="side-panel active" style="padding:8px">
+          <div class="sel-bar red" id="card-sel-bar">
+            <div>
+              <div class="sel-name" id="card-sel-name">No player selected</div>
+              <div class="sel-hint">Tap a player</div>
+            </div>
+            <div class="sel-pts red" id="card-sel-pts"></div>
+          </div>
+          <div class="sec-label">Roster</div>
+          <div class="player-list" id="card-player-list"></div>
+          <div class="sec-label">Stat</div>
+          <div class="stat-grid">
+            <button class="stat-btn make" onclick="rec('cardinals','2PM','2-pt made',2)">2-pt ✓</button>
+            <button class="stat-btn miss" onclick="rec('cardinals','2PA','2-pt miss',0)">2-pt ✗</button>
+            <button class="stat-btn make" onclick="rec('cardinals','3PM','3-pt made',3)">3-pt ✓</button>
+            <button class="stat-btn miss" onclick="rec('cardinals','3PA','3-pt miss',0)">3-pt ✗</button>
+            <button class="stat-btn make" onclick="rec('cardinals','FTM','FT made',1)">FT ✓</button>
+            <button class="stat-btn miss" onclick="rec('cardinals','FTA','FT miss',0)">FT ✗</button>
+            <button class="stat-btn neutral" onclick="rec('cardinals','AST','Assist',0)">Assist</button>
+            <button class="stat-btn neutral" onclick="rec('cardinals','REB','Rebound',0)">Rebound</button>
+            <button class="stat-btn warn" onclick="rec('cardinals','TO','Turnover',0)">Turnover</button>
+            <button class="stat-btn neutral" onclick="rec('cardinals','STL','Steal',0)">Steal</button>
+            <button class="stat-btn neutral" onclick="rec('cardinals','BLK','Block',0)">Block</button>
+            <button class="stat-btn warn" onclick="rec('cardinals','PF','Foul',0)">Foul</button>
+          </div>
+        </div>
+
+        <!-- CARDINALS LOG -->
+        <div id="cardinals-log" class="side-panel" style="padding:8px">
+          <div class="log-list" id="card-log-list">
+            <div class="empty-msg">No stats yet</div>
+          </div>
+        </div>
+
+        <!-- CARDINALS BOX -->
+        <div id="cardinals-box" class="side-panel" style="padding:8px">
+          <div class="box-wrap">
+            <table>
+              <thead><tr>
+                <th style="text-align:left">Player</th>
+                <th>PT</th><th>2M</th><th>3M</th><th>FT</th>
+                <th>RB</th><th>AS</th><th>TO</th><th>ST</th><th>PF</th>
+              </tr></thead>
+              <tbody id="card-box-body"></tbody>
+            </table>
+          </div>
+          <button class="btn-export red" style="margin-top:8px" onclick="exportCSV()">Export game CSV</button>
+        </div>
+
+        <!-- CARDINALS SETUP -->
+        <div id="cardinals-setup" class="side-panel" style="padding:8px">
+          <div class="setup-section">
+            <div class="setup-label">Game info</div>
+            <input class="setup-input" type="text" id="game-name-input" placeholder="vs. Sedalia — Jan 12">
+            <input class="setup-input" type="text" id="opp-name-input" placeholder="Opponent name">
+            <button class="btn-export red" onclick="applySetup()">Save setup</button>
+          </div>
+          <div class="setup-section">
+            <div class="setup-label" style="color:var(--red)">Cardinals roster</div>
+            <div class="add-row">
+              <input class="add-num" type="text" id="card-num" placeholder="#" inputmode="numeric">
+              <input class="add-name" type="text" id="card-name" placeholder="Name">
+              <button class="add-btn red" onclick="addPlayer('cardinals')">Add</button>
+            </div>
+            <div id="card-roster-list"></div>
+          </div>
+          <button class="btn-clear" onclick="clearGame()">Clear all game data</button>
+        </div>
+
+      </div>
+      <div class="undo-bar">
+        <button class="undo-btn" onclick="undoLast('cardinals')">Undo last Cardinals entry</button>
+      </div>
+    </div>
+
+    <!-- RIGHT SIDE — OPPONENT -->
+    <div class="side">
+      <div class="side-header blue">
+        <div class="side-label blue" id="opp-side-label">Opponent</div>
+        <div style="font-size:10px;color:#666">Q<span id="opp-period">1</span></div>
+      </div>
+      <div class="side-tabs">
+        <button class="side-tab active blue" onclick="switchSide('opponent','track',this)">Track</button>
+        <button class="side-tab blue" onclick="switchSide('opponent','log',this)">Log</button>
+        <button class="side-tab blue" onclick="switchSide('opponent','box',this)">Box</button>
+        <button class="side-tab blue" onclick="switchSide('opponent','setup',this)">Setup</button>
+      </div>
+      <div class="side-content">
+
+        <!-- OPPONENT TRACK -->
+        <div id="opponent-track" class="side-panel active" style="padding:8px">
+          <div class="sel-bar blue" id="opp-sel-bar">
+            <div>
+              <div class="sel-name" id="opp-sel-name">No player selected</div>
+              <div class="sel-hint">Tap a player</div>
+            </div>
+            <div class="sel-pts blue" id="opp-sel-pts"></div>
+          </div>
+          <div class="sec-label">Quick score</div>
+          <div class="quick-row">
+            <button class="quick-btn" onclick="quickScore(2)">+2</button>
+            <button class="quick-btn" onclick="quickScore(3)">+3</button>
+            <button class="quick-btn" onclick="quickScore(1)">+1 FT</button>
+          </div>
+          <div class="sec-label">Roster</div>
+          <div class="player-list" id="opp-player-list"><div class="empty-msg">Add roster in Setup</div></div>
+          <div class="sec-label">Stat</div>
+          <div class="stat-grid">
+            <button class="stat-btn make" onclick="rec('opponent','2PM','2-pt made',2)">2-pt ✓</button>
+            <button class="stat-btn miss" onclick="rec('opponent','2PA','2-pt miss',0)">2-pt ✗</button>
+            <button class="stat-btn make" onclick="rec('opponent','3PM','3-pt made',3)">3-pt ✓</button>
+            <button class="stat-btn miss" onclick="rec('opponent','3PA','3-pt miss',0)">3-pt ✗</button>
+            <button class="stat-btn make" onclick="rec('opponent','FTM','FT made',1)">FT ✓</button>
+            <button class="stat-btn miss" onclick="rec('opponent','FTA','FT miss',0)">FT ✗</button>
+            <button class="stat-btn neutral" onclick="rec('opponent','AST','Assist',0)">Assist</button>
+            <button class="stat-btn neutral" onclick="rec('opponent','REB','Rebound',0)">Rebound</button>
+            <button class="stat-btn warn" onclick="rec('opponent','TO','Turnover',0)">Turnover</button>
+            <button class="stat-btn neutral" onclick="rec('opponent','STL','Steal',0)">Steal</button>
+            <button class="stat-btn neutral" onclick="rec('opponent','BLK','Block',0)">Block</button>
+            <button class="stat-btn warn" onclick="rec('opponent','PF','Foul',0)">Foul</button>
+          </div>
+        </div>
+
+        <!-- OPPONENT LOG -->
+        <div id="opponent-log" class="side-panel" style="padding:8px">
+          <div class="log-list" id="opp-log-list">
+            <div class="empty-msg">No stats yet</div>
+          </div>
+        </div>
+
+        <!-- OPPONENT BOX -->
+        <div id="opponent-box" class="side-panel" style="padding:8px">
+          <div class="box-wrap">
+            <table>
+              <thead><tr>
+                <th style="text-align:left">Player</th>
+                <th>PT</th><th>2M</th><th>3M</th><th>FT</th>
+                <th>RB</th><th>AS</th><th>TO</th><th>ST</th><th>PF</th>
+              </tr></thead>
+              <tbody id="opp-box-body"></tbody>
+            </table>
+          </div>
+          <button class="btn-export blue" style="margin-top:8px" onclick="exportScout()">Export scouting CSV</button>
+        </div>
+
+        <!-- OPPONENT SETUP -->
+        <div id="opponent-setup" class="side-panel" style="padding:8px">
+          <div class="setup-section">
+            <div class="setup-label" style="color:#1565C0">Opponent roster</div>
+            <div class="add-row">
+              <input class="add-num" type="text" id="opp-num" placeholder="#" inputmode="numeric">
+              <input class="add-name" type="text" id="opp-pname" placeholder="Name">
+              <button class="add-btn blue" onclick="addPlayer('opponent')">Add</button>
+            </div>
+            <div id="opp-roster-list"></div>
+          </div>
+        </div>
+
+      </div>
+      <div class="undo-bar">
+        <button class="undo-btn" onclick="undoLast('opponent')">Undo last opponent entry</button>
+      </div>
+    </div>
+
+  </div><!-- end split -->
+</div><!-- end app -->
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── STATE ──────────────────────────────────────────────
+let period = 1;
+let selectedIdx = {cardinals: null, opponent: null};
+let ourScore = 0, oppScoreVal = 0;
+let logs = {cardinals: [], opponent: []};
+
+function mkPlayer(num, name){
+  return {num, name, pts:0,
+    '2PM':0,'2PA':0,'3PM':0,'3PA':0,
+    FTM:0,FTA:0,REB:0,AST:0,TO:0,STL:0,BLK:0,PF:0};
+}
+
+let rosters = {
+  cardinals: [
+    mkPlayer('3','Mitchell, C.'), mkPlayer('5','Martin, M.'),
+    mkPlayer('11','Lowe, R.'),    mkPlayer('14','English, J.'),
+    mkPlayer('22','Townsend, K.'),mkPlayer('33','Gardner, T.'),
+  ],
+  opponent: []
+};
+
+// ── PERIOD ─────────────────────────────────────────────
+function setPeriod(p, el){
+  period = p;
+  document.querySelectorAll('.period-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  const label = p===5?'OT':`Q${p}`;
+  document.getElementById('period-badge').textContent = label;
+  document.getElementById('card-period').textContent = p===5?'OT':p;
+  document.getElementById('opp-period').textContent  = p===5?'OT':p;
+}
+
+// ── RENDER PLAYERS ─────────────────────────────────────
+function renderPlayers(team){
+  const roster = rosters[team];
+  const id = team==='cardinals' ? 'card-player-list' : 'opp-player-list';
+  const selClass = team==='cardinals' ? 'sel-red' : 'sel-blue';
+  const ptsClass = team==='cardinals' ? 'red' : 'blue';
+  const el = document.getElementById(id);
+  if(!roster.length){
+    el.innerHTML='<div class="empty-msg">Add players in Setup tab</div>';
+    return;
+  }
+  el.innerHTML = roster.map((p,i)=>{
+    const made = p['2PM']+p['3PM']+p.FTM;
+    const att  = made+p['2PA']+p['3PA']+p.FTA;
+    const sel  = selectedIdx[team]===i;
+    return `<div class="player-card${sel?' '+selClass:''}" onclick="selectPlayer('${team}',${i})">
+      <div class="pc-left">
+        <div class="pc-num">#${p.num}</div>
+        <div class="pc-name">${p.name}</div>
+        <div class="pc-stats">${made}/${att} · ${p.REB}r · ${p.AST}a · ${p.TO}to</div>
+      </div>
+      <div class="pc-pts ${ptsClass}">${p.pts}</div>
+    </div>`;
+  }).join('');
+}
+
+function selectPlayer(team, i){
+  selectedIdx[team] = i;
+  const p = rosters[team][i];
+  const color = team==='cardinals' ? 'red' : 'blue';
+  document.getElementById(`${team==='cardinals'?'card':'opp'}-sel-name`).textContent = `#${p.num} ${p.name}`;
+  document.getElementById(`${team==='cardinals'?'card':'opp'}-sel-pts`).textContent = p.pts;
+  renderPlayers(team);
+}
+
+// ── RECORD STAT ────────────────────────────────────────
+function rec(team, stat, label, pts){
+  const idx = selectedIdx[team];
+  if(idx===null){showToast('Select a player first');return;}
+  const p = rosters[team][idx];
+  p[stat]=(p[stat]||0)+1;
+  p.pts += pts;
+
+  if(team==='cardinals'){
+    ourScore+=pts;
+    document.getElementById('our-score').textContent=ourScore;
+  } else {
+    oppScoreVal+=pts;
+    document.getElementById('opp-score').textContent=oppScoreVal;
+  }
+
+  const entry={player:p.name,num:p.num,stat,label,pts,period,
+    time:new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})};
+  logs[team].unshift(entry);
+
+  const selPtsId = team==='cardinals'?'card-sel-pts':'opp-sel-pts';
+  document.getElementById(selPtsId).textContent = p.pts;
+  renderPlayers(team);
+  renderLog(team);
+  renderBox(team);
+  showToast(`#${p.num} ${p.name} — ${label}`);
+}
+
+function quickScore(pts){
+  oppScoreVal+=pts;
+  document.getElementById('opp-score').textContent=oppScoreVal;
+  logs.opponent.unshift({player:'Untracked',num:'',stat:'OPP',
+    label:`+${pts}`,pts,period,
+    time:new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})});
+  renderLog('opponent');
+  showToast(`Opponent +${pts}`);
+}
+
+// ── UNDO ───────────────────────────────────────────────
+function undoLast(team){
+  if(!logs[team].length){showToast('Nothing to undo');return;}
+  const e=logs[team].shift();
+  if(e.stat!=='OPP'){
+    const p=rosters[team].find(x=>x.name===e.player);
+    if(p){p[e.stat]=Math.max(0,(p[e.stat]||1)-1);p.pts=Math.max(0,p.pts-e.pts);}
+  }
+  if(team==='cardinals'){ourScore=Math.max(0,ourScore-e.pts);document.getElementById('our-score').textContent=ourScore;}
+  else{oppScoreVal=Math.max(0,oppScoreVal-e.pts);document.getElementById('opp-score').textContent=oppScoreVal;}
+  const selPtsId=team==='cardinals'?'card-sel-pts':'opp-sel-pts';
+  const idx=selectedIdx[team];
+  if(idx!==null&&rosters[team][idx])
+    document.getElementById(selPtsId).textContent=rosters[team][idx].pts;
+  renderPlayers(team);renderLog(team);renderBox(team);
+  showToast('Undone');
+}
+
+// ── LOG ────────────────────────────────────────────────
+function renderLog(team){
+  const id=team==='cardinals'?'card-log-list':'opp-log-list';
+  const color=team==='cardinals'?'red':'blue';
+  const el=document.getElementById(id);
+  if(!logs[team].length){el.innerHTML='<div class="empty-msg">No stats yet</div>';return;}
+  el.innerHTML=logs[team].slice(0,30).map(e=>`
+    <div class="log-item ${color}">
+      <div class="log-player">${e.num?'#'+e.num+' ':''}${e.player}</div>
+      <div class="log-action">${e.label} · Q${e.period}</div>
+      <div class="log-time">${e.time}</div>
+    </div>`).join('');
+}
+
+// ── BOX SCORE ──────────────────────────────────────────
+function buildBoxRows(roster){
+  if(!roster.length) return '<tr><td colspan="10" style="text-align:center;color:var(--text-3);padding:12px">No players</td></tr>';
+  const tot={pts:0,'2PM':0,'3PM':0,FTM:0,FTA:0,REB:0,AST:0,TO:0,STL:0,PF:0};
+  let rows=roster.map(p=>{
+    Object.keys(tot).forEach(k=>{if(p[k])tot[k]+=p[k];});
+    return`<tr>
+      <td>#${p.num} ${p.name.split(',')[0]}</td>
+      <td><b>${p.pts}</b></td><td>${p['2PM']}</td><td>${p['3PM']}</td>
+      <td>${p.FTM}/${p.FTM+p.FTA}</td><td>${p.REB}</td><td>${p.AST}</td>
+      <td>${p.TO}</td><td>${p.STL}</td><td>${p.PF}</td>
+    </tr>`;
+  }).join('');
+  rows+=`<tr class="totals-row">
+    <td>TEAM</td><td><b>${tot.pts}</b></td><td>${tot['2PM']}</td><td>${tot['3PM']}</td>
+    <td>${tot.FTM}/${tot.FTM+tot.FTA}</td><td>${tot.REB}</td><td>${tot.AST}</td>
+    <td>${tot.TO}</td><td>${tot.STL}</td><td>${tot.PF}</td>
+  </tr>`;
+  return rows;
+}
+
+function renderBox(team){
+  const id=team==='cardinals'?'card-box-body':'opp-box-body';
+  document.getElementById(id).innerHTML=buildBoxRows(rosters[team]);
+}
+
+// ── EXPORT ─────────────────────────────────────────────
+function rosterToCSV(roster,label){
+  let csv=`\n${label}\n#,Player,PTS,2PM,2PA,3PM,3PA,FTM,FTA,REB,AST,TO,STL,BLK,PF\n`;
+  roster.forEach(p=>{
+    csv+=`${p.num},${p.name},${p.pts},${p['2PM']},${p['2PA']},${p['3PM']},${p['3PA']},${p.FTM},${p.FTA},${p.REB},${p.AST},${p.TO},${p.STL},${p.BLK},${p.PF}\n`;
+  });
+  return csv;
+}
+function dl(content,name){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([content],{type:'text/csv'}));
+  a.download=name;a.click();
+}
+function exportCSV(){
+  const opp=document.getElementById('opp-name-input').value||'Opponent';
+  const game=document.getElementById('game-name-input').value||'Game';
+  let csv=`Cardinals Basketball — ${game}\nFinal: Cardinals ${ourScore} - ${opp} ${oppScoreVal}\n`;
+  csv+=rosterToCSV(rosters.cardinals,'CARDINALS');
+  csv+=rosterToCSV(rosters.opponent,opp.toUpperCase());
+  dl(csv,`Cardinals_vs_${opp.replace(/\s/g,'_')}.csv`);
+  showToast('Game exported');
+}
+function exportScout(){
+  const opp=document.getElementById('opp-name-input').value||'Opponent';
+  if(!rosters.opponent.length){showToast('No opponent data');return;}
+  dl(rosterToCSV(rosters.opponent,opp.toUpperCase()),`Scout_${opp.replace(/\s/g,'_')}.csv`);
+  showToast('Scouting report exported');
+}
+
+// ── SETUP ──────────────────────────────────────────────
+function addPlayer(team){
+  const numEl=document.getElementById(team==='cardinals'?'card-num':'opp-num');
+  const nameEl=document.getElementById(team==='cardinals'?'card-name':'opp-pname');
+  const num=numEl.value.trim(),name=nameEl.value.trim();
+  if(!num||!name){showToast('Enter number and name');return;}
+  rosters[team].push(mkPlayer(num,name));
+  numEl.value='';nameEl.value='';
+  renderRosterList(team);renderPlayers(team);
+  showToast(`Added #${num} ${name}`);
+}
+
+function removePlayer(team,i){
+  rosters[team].splice(i,1);
+  if(selectedIdx[team]===i)selectedIdx[team]=null;
+  renderRosterList(team);renderPlayers(team);
+}
+
+function renderRosterList(team){
+  const id=team==='cardinals'?'card-roster-list':'opp-roster-list';
+  const roster=rosters[team];
+  document.getElementById(id).innerHTML=roster.map((p,i)=>`
+    <div class="roster-item">
+      <span class="roster-item-name">#${p.num} ${p.name}</span>
+      <button class="roster-remove" onclick="removePlayer('${team}',${i})">Remove</button>
+    </div>`).join('');
+}
+
+function applySetup(){
+  const game=document.getElementById('game-name-input').value||'Cardinals Basketball';
+  const opp=document.getElementById('opp-name-input').value||'Opponent';
+  document.getElementById('game-label').textContent=game;
+  document.getElementById('opp-name-display').textContent=opp;
+  document.getElementById('opp-side-label').textContent=opp;
+  showToast('Setup saved');
+}
+
+function clearGame(){
+  if(!confirm('Clear all stats?'))return;
+  ['cardinals','opponent'].forEach(t=>{
+    rosters[t].forEach(p=>{
+      p.pts=0;p['2PM']=0;p['2PA']=0;p['3PM']=0;p['3PA']=0;
+      p.FTM=0;p.FTA=0;p.REB=0;p.AST=0;p.TO=0;p.STL=0;p.BLK=0;p.PF=0;
+    });
+    logs[t]=[];selectedIdx[t]=null;
+  });
+  ourScore=0;oppScoreVal=0;
+  document.getElementById('our-score').textContent='0';
+  document.getElementById('opp-score').textContent='0';
+  ['cardinals','opponent'].forEach(t=>{renderPlayers(t);renderLog(t);renderBox(t);});
+  showToast('Game cleared');
+}
+
+// ── TAB SWITCH ─────────────────────────────────────────
+function switchSide(team, tab, el){
+  const color = team==='cardinals'?'red':'blue';
+  const prefix = team==='cardinals'?'cardinals':'opponent';
+  document.querySelectorAll(`#${team==='cardinals'?'cardinals':'opponent'}-track,#${team==='cardinals'?'cardinals':'opponent'}-log,#${team==='cardinals'?'cardinals':'opponent'}-box,#${team==='cardinals'?'cardinals':'opponent'}-setup`)
+    .forEach(p=>p.classList.remove('active'));
+  el.closest('.side').querySelectorAll('.side-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(`${prefix}-${tab}`).classList.add('active');
+  el.classList.add('active');
+  if(tab==='box'){renderBox(team);}
+  if(tab==='setup'){renderRosterList(team);}
+}
+
+// ── TOAST ──────────────────────────────────────────────
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),1600);
+}
+
+// ── INIT ───────────────────────────────────────────────
+['cardinals','opponent'].forEach(t=>{renderPlayers(t);renderLog(t);renderBox(t);renderRosterList(t);});
+</script>
+</body>
+</html>
